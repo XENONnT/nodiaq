@@ -34,7 +34,7 @@ router.get('/eb_status', ensureAuthenticated, function(req, res) {
   var host = q.host;
   if (typeof host == 'undefined')
     return res.json({});
-  req.db.get('eb_status').find({host: host}, {sort: {_id: -1}, limit: 1})
+  req.db.get('eb_monitor').find({host: host}, {sort: {_id: -1}, limit: 1})
   .then( (docs) => {
     if (docs.length == 0)
       return res.json({});

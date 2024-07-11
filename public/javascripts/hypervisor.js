@@ -171,14 +171,14 @@ function UpdateBootstrax() {
         console.log(data);
         return;
       }
-      var host = data['host'].substr(5,8);
+      var host = data.host.substring(0,3);
       try{
         if (data.checkin > timeout) {
-          svgobj.getElementById(data.host+"_bootstrax_status").style.fill='red';
-          svgobj.getElementById(data.host+"_bootstrax_label").textContent="START";
+          svgobj.getElementById(host+"_bootstrax_status").style.fill='red';
+          svgobj.getElementById(host+"_bootstrax_label").textContent="START";
         } else {
-          svgobj.getElementById(data.host+"_bootstrax_status").style.fill='lime';
-          svgobj.getElementById(data.host+"_bootstrax_label").textContent="STOP";
+          svgobj.getElementById(host+"_bootstrax_status").style.fill='lime';
+          svgobj.getElementById(host+"_bootstrax_label").textContent="STOP";
         }
       }catch(error){
         console.log(error);
@@ -198,7 +198,7 @@ function UpdateAjax() {
         console.log(err);
         return;
       }
-      var host = data['host'].substr(5,8);
+      var host = data['host'].substring(5,8);
       try{
         if (data.checkin > timeout) {
           svgobj.getElementById(host+"_ajax_label").textContent="START";
