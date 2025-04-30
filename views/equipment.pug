@@ -8,12 +8,13 @@ block extrahead
   script(src="javascripts/tabulator.min.js" type="text/javascript")
 
 block content
-  div.det_card_noheight#header
+  div.main-container(style="height:100%")
+    div.det_card_noheight#header
     span
       h5 DAQ Equipment Database
         span.float-right(style="display-inline;margin-bottom:5px")
           button.btn.btn-info(onclick="$('#newItemModal').modal('show')") New Entry
-  table.table.table_hover#equipment_table(style="width:100%;height:100%;background:white")
+    table.table.table_hover#equipment_table(style="width:100%;height:100%;background:white")
     thead
       tr
         th Manufacturer
