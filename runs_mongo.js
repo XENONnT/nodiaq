@@ -1,7 +1,7 @@
 var mongoose = require('mongoose');
 var DataTable = require('mongoose-datatable').default;
 var runsModel;
-var dbURI = process.env.RUNS_URI;
+var dbURI = 'mongodb://' + process.env.RUNS_URI;
 var runsdb = mongoose.connection;
 var runs;
 var runsTableSchema;
