@@ -68,7 +68,6 @@ function LoadDetail(obj){
         MaybeUpdateItemField(data['_id'], str)});
     }
   });
-  $("#detail_modal").modal();
   var html = "";
   for(var j in data['actions']){
     html += "<div class='card card body' style='padding:10px'>";
@@ -81,6 +80,8 @@ function LoadDetail(obj){
   }
   $("#collapseHistory").html(html);
   console.log(data);
+  $("#detail_modal").modal();
+
 }
 
 // These two functions allow updating fields in item description. The first click
