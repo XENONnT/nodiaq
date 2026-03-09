@@ -1,7 +1,7 @@
 // global settings, change those if there are changes to the daq
 
 const readers_per_detector = {
-    "tpc": ["reader0_reader_0", "reader1_reader_0", "reader2_reader_0"]
+    "tpc": ["reader7_reader_0", "reader8_reader_0"]
 }
 
 //var default_view = "tpc"

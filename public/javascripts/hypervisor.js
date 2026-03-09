@@ -1,7 +1,7 @@
 // public/javascripts/hypervisor.js
 // this isn't getting an experiment-agnostic template
 // deal with it
-var all_hosts = ['reader0', 'reader1', 'reader2', 'reader3', 'reader4', 'reader5',
+var all_hosts = ['reader0', 'reader1', 'reader2', 'reader3', 'reader4', 'reader5','reader7', 'reader8', 'reader9',
   'eb0', 'eb1', 'eb2', 'eb3', 'eb4', 'eb5', 'oldmaster'];
 var all_readout = ['reader0_controller_0', 'reader0_reader_0', 'reader1_reader_0', 'reader2_reader_0'];
 var all_bootstrax = ['eb0.xenon.local', 'eb1.xenon.local', 'eb3.xenon.local', 'eb4.xenon.local', 'eb5.xenon.local'];
