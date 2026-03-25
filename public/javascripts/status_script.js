@@ -5,11 +5,27 @@ document.last_time_charts = {};
 document.reader_data = {};
 
 var readers = [];
+var reader_labels = {};
 var controllers = [];
 var eventbuilders = [];
 
+function GetReaderLabel(host) {
+  if (typeof reader_labels[host] != 'undefined' && reader_labels[host] !== "")
+    return reader_labels[host];
+  return host;
+}
+
+function GetReaderSeriesName(host, variable) {
+  var suffix = variable == "buff" ? " buffer" : " rate";
+  return GetReaderLabel(host) + suffix;
+}
+
 function SetHosts(hosts) {
   $.getJSON("status/template_info", data => {
+    reader_labels = data.readers.reduce((labels, proc) => {
+      labels[proc[1]] = proc[0] || proc[1];
+      return labels;
+    }, {});
     readers = data.readers.map(proc => proc[1]);
     controllers = data.controllers.map(proc => proc[1]);
     eventbuilders = data.eventbuilders;
@@ -73,23 +89,25 @@ function DrawInitialRatePlot(){
 
   // Convert data dict to highcharts format
   var series = [];
-  var yaxis_label = "";
-  for(var key in document.reader_data){
+  var variable = $("#menu_variable_s").val();
+  var yaxis_label = variable == "buff" ? "MB" : "MB/s";
+  readers.forEach(reader => {
+    if (typeof document.reader_data[reader] == 'undefined')
+      return;
     var rates = {};
-    if($("#menu_variable_s").val() == "rate") {
+    if(variable == "rate") {
       rates = {"type": "line", 
-        "name": key+" rate", 
-        "data": document.reader_data[key]['rate']};
-      yaxis_label = "MB/s";
-    } else if($("#menu_variable_s").val() == "buff") {
+        "id": reader,
+        "name": GetReaderSeriesName(reader, variable), 
+        "data": document.reader_data[reader]['rate']};
+    } else if(variable == "buff") {
       rates = {"type": "area", 
-        "name": key+" buffer", 
-        "data": document.reader_data[key]['buff']};
-      yaxis_label = "MB";
+        "id": reader,
+        "name": GetReaderSeriesName(reader, variable), 
+        "data": document.reader_data[reader]['buff']};
     }
     series.push(rates);
-
-  }
+  });
 
   var chart_opts = {
     chart: {
@@ -192,19 +210,16 @@ function UpdateFromReaders(){
         document.last_time_charts[rd] = data['ts'];
 
         // Chart auto update
-        var update_name = "";
         var val = null;
         try{
           if($("#menu_variable_s").val() == "rate"){
-            update_name = data['host'] + " rate";
             val = data['rate'];
           }
           else if($("#menu_variable_s").val() == "buff"){
-            update_name = data['host'] + " buff";
             val = data['buffer_length'];
           }
           // Trick to only update drawing once per seven readers (careful it doesn't bite you)
-          UpdateMultiChart(data['ts'], val, update_name, data['host'] == readers[0]);
+          UpdateMultiChart(data['ts'], val, data['host'], data['host'] == readers[0]);
         }catch(error){
         }
       }
@@ -315,10 +330,9 @@ function UpdateMultiChart(ts, val, host, update){
   var tss = (new Date(ts)).getTime();
   if(typeof(document.RatePlot)=='undefined')
     return;
-  for(var i in document.RatePlot.series){
-    if(document.RatePlot.series[i].name == host)
-      document.RatePlot.series[i].addPoint([tss, val], true, update);
-  }
+  var series = document.RatePlot.get(host);
+  if(typeof series != 'undefined')
+    series.addPoint([tss, val], true, update);
 }
 
 function UpdateChart(host, ts, rate, buff){
