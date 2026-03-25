@@ -130,7 +130,6 @@ function UpdateStatusPage(){
     UpdateCommandPanel();
     UpdateCrateControllers();
     UpdateFromReaders();
-    UpdateCeph();
     UpdateBootstrax();
     UpdateDispatcher();
 }
@@ -173,61 +172,6 @@ function UpdateBootstrax() {
       $(`#${eb}_checkin`).html((data['checkin']/1000).toFixed(0));
     });
   });
-}
-
-function UpdateCeph(){
-  $.getJSON("hosts/get_host_status?host=ceph", (data) => {
-    $("#ceph_filltext").html( ((data['ceph_size']-data['ceph_free'])/1e12).toFixed(2) + "/" +
-      + (data['ceph_size']/1e12).toFixed(2) + "TB");
-    $('#ceph_status').html(data['health']);
-    $("#ceph_status").css("color", data['health'] == 'HEALTH_OK' ? "green" : "red");
-
-    var osds = data['osds'];
-    osds = osds.sort((a, b) => parseFloat(a.id) - parseFloat(b.id));
-    if($('#osd_div').html() == ""){
-      $("#osd_div").html(osds.reduce((tot_html, osd, i) => {
-        var html = "<div class='col-xs-12 col-sm-6' style='height:30px'>"; 
-        html += "<strong style='float:left'>OSD " +
-          osd['id'] + "&nbsp; </strong>";
-        html += "<span style='font-size:10px'>Rd: ";
-        html += "<span id='osd_"+i+"_rd'></span> (";
-        html += "<span id='osd_"+i+"_rd_bytes'></span>)";
-        html += "&nbsp;Wrt: <span id='osd_"+i+"_wr'></span> (";
-        html += "<span id='osd_"+i+"_wr_bytes'></span>/s)</span>";
-
-        html += '<div class="progress" style="height:5px;" id="osd_' + i + '_progress">';
-        html += '<div id="osd_' + i + '_capacity" class="progress-bar" role="progressbar" style="width:0%"></div></div></div>';
-        return tot_html + html;
-      }, ""));
-    }
-    UpdateOSDs(data);
-  });
-}
-
-function ToHumanBytes(number){
-  if(number > 1e12)
-    return (number/1e12).toFixed(2) + " TB";
-  if(number > 1e9)
-    return (number/1e9).toFixed(2) + " GB";
-  if(number > 1e6)
-    return (number/1e6).toFixed(2) + " MB";
-  if(number > 1e3)
-    return (number/1e3).toFixed(2) + " kB";
-  return number + " B";
-}
-
-function UpdateOSDs(data){
-  for(var i in data['osds']){
-    var j = data['osds'][i]['id'];
-    $("#osd_" + j + "_rd").text(data['osds'][i]['rd ops']);
-    $("#osd_" + j + "_rd_bytes").text(ToHumanBytes(data['osds'][i]['rd data']));
-    $("#osd_" + j + "_wr").text(data['osds'][i]['wr ops']);
-    $("#osd_" + j + "_wr_bytes").text(ToHumanBytes(data['osds'][i]['wr data']));
-    $("#osd_" + j + "_capacity").width(parseInt(100*data['osds'][i]['used'] /
-      (data['osds'][i]['used'] +
-        data['osds'][i]['avail']))+"%");
-    $("#osd_" + j + "_progress").prop('title', ToHumanBytes(data['osds'][i]['used']) + " used of " + ToHumanBytes(data['osds'][i]['used'] + data['osds'][i]['avail']));
-  }
 }
 
 function UpdateFromReaders(){
@@ -384,4 +328,3 @@ function UpdateChart(host, ts, rate, buff){
     document.charts[host].series[1].addPoint([tss, buff], true, true);
   }
 }
-
