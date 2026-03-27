@@ -201,6 +201,21 @@ function GetSystemMonitorStatus(collection, host) {
   return collection.find(query, options);
 }
 
+function GetLatestDoc(collection) {
+  var options = {sort: {'_id': -1}, limit: 1};
+  return collection.find({}, options);
+}
+
+function LiveDataDocToCephCompat(doc) {
+  if (!doc) return doc;
+  var ret = Object.assign({}, doc);
+  ret.host = 'ceph';
+  ret.ceph_size = doc.total_space;
+  ret.ceph_free = doc.free_space;
+  ret.ceph_available = doc.available_space;
+  return ret;
+}
+
 function CSVEscape(value) {
   if (typeof value == 'undefined' || value === null) {
     return '';
@@ -349,9 +364,27 @@ router.get("/sample.csv", checkKey, function(req, res) {
 router.get("/gethoststatus/:host", checkKey, function(req, res) {
   var host = req.params.host
   var collection = req.db.get("system_monitor");
+  var liveDataCollection = req.db.get("live_data_monitor");
   GetSystemMonitorStatus(collection,host).then( docs => {
-    if (docs.length == 0)
+    if (docs.length != 0)
+      return res.json(docs[0]);
+    if (host !== 'ceph')
       return res.json({message: "No status update found for this host"});
+    return GetLatestDoc(liveDataCollection).then(liveDocs => {
+      if (liveDocs.length == 0)
+        return res.json({message: "No status update found for this host"});
+      return res.json(LiveDataDocToCephCompat(liveDocs[0]));
+    });
+  }).catch( err => {
+    return res.json({message: err.message});
+  });
+});
+
+router.get("/getlivedatastatus", checkKey, function(req, res) {
+  var collection = req.db.get("live_data_monitor");
+  GetLatestDoc(collection).then( docs => {
+    if (docs.length == 0)
+      return res.json({message: "No live data status update found"});
     return res.json(docs[0]);
   }).catch( err => {
     return res.json({message: err.message});
