@@ -83,7 +83,7 @@ router.get("/remove_run_mode", ensureAuthenticated, function(req, res){
 
       const safeName = name.replace(/[^A-Za-z0-9_.-]/g, "_");
       const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const dir = "/daq_common3/deleted_configs";
+      const dir = "/daq_common3/nodiaq_backups/deleted_configs";
       const filename = `${safeName}_${stamp}.json`;
       const filepath = path.join(dir, filename);
       await fs.promises.mkdir(dir, {recursive: true});
