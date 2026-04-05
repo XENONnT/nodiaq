@@ -40,7 +40,7 @@ router.post('/addtags', ensureAuthenticated, function(req, res){
   }
 
   // Convert runs to int
-  var runsint = runs.map(parseInt);
+  var runsint = runs.map(r => parseInt(r, 10)).filter(Number.isFinite);
   // Update many
   var query = {number: {$in: runsint}, 'tags.name': {$ne: tag}};
   var update = {$push: {tags: {date: new Date(), user: user, name: tag}}};
@@ -83,7 +83,7 @@ router.post('/addcomment', ensureAuthenticated, function(req, res){
     return res.json({err: "Invalid user credentials"});
   }
   // Convert runs to int
-  var runsint = runs.map(parseInt);
+  var runsint = runs.map(r => parseInt(r, 10)).filter(Number.isFinite);
   // Update many
   var query = {number: {$in: runsint}};
   var update = {$push: {comments: {date: new Date(), user: user, comment: comment}}};

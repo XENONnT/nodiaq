@@ -1,5 +1,13 @@
 const SCRIPT_VERSION = '20211103';
 
+function NormalizeTagInput(raw) {
+  if (typeof raw === "undefined" || raw == null) return [];
+  return raw
+    .split(/[,\s]+/)
+    .map(tag => tag.trim())
+    .filter(tag => tag.length > 0);
+}
+
 function SearchTag(name){
   $("#mongoquery").val(`{"tags.name": "${name}"}`);
   CheckMongoQuery();
@@ -149,11 +157,19 @@ function InitializeRunsTable(divname){
     table.ajax.reload();
   });
 
+  table.on('draw', function() {
+    UpdateAddTagRowVisibility();
+  });
+
+  function UpdateAddTagRowVisibility() {
+    if (table.rows('.selected').data().toArray().length > 0) $("#addtagrow").slideDown();
+    else $("#addtagrow").slideUp();
+  }
 
   $(divname + ' tbody').on( 'click', 'td', function () {
     if(!$(this).hasClass("not-selectable")){
       $(this).parent().toggleClass('selected');
-      $("#addtagrow").slideDown();
+      UpdateAddTagRowVisibility();
     }
   } );
 
@@ -163,9 +179,7 @@ function InitializeRunsTable(divname){
     if(typeof comment ==="undefined")
       console.log("No comment!");
     else{
-      var runs = [];
-      for(var i=0; i<table.rows('.selected')[0].length; i++)
-        runs.push(table.rows('.selected').data()[i]['number']);
+      var runs = table.rows('.selected').data().toArray().map(row => row.number);
       $.ajax({
         type: "POST",
         url: "runsui/addcomment",
@@ -183,30 +197,46 @@ function InitializeRunsTable(divname){
   });
 
   $('#add_tag_button').click( function () {
-    var tag = $("#taginput").val();
-    if(typeof tag ==="undefined" || tag == null || tag == "") {
-      alert('Please specify a tag');
-    } else if (tag.includes(' ')) {
-      alert('Tags cannot include spaces');
-    } else{
-      var runs = table.rows('.selected').data().map(row => row.number);
-      if (tag === 'flash') document.getElementById("flash_whoa").play();
-      if(runs.length>0) {
-        $.ajax({
-          type: "POST",
-          url: "runsui/addtags",
-          data: {"version": SCRIPT_VERSION, "runs": runs, "tag": tag, "user": "web user"},
-          success: (data) => {
-            if (typeof data.err != 'undefined') alert(data.err);
-             table.ajax.reload();},
-          error:   function(jqXHR, textStatus, errorThrown) {
-            alert("Error, status = " + textStatus + ", " +
-              "error thrown: " + errorThrown
-            );
-          }
-        });
-      }
+    var tags = NormalizeTagInput($("#taginput").val());
+    if(tags.length === 0) {
+      alert('Please specify at least one tag');
+      return;
     }
+    if (tags.some(tag => tag.includes(' '))) {
+      alert('Tags cannot include spaces');
+      return;
+    }
+    var runs = table.rows('.selected').data().toArray().map(row => row.number);
+    if (runs.length === 0) {
+      alert('Please select at least one run');
+      return;
+    }
+    if (tags.includes('flash')) document.getElementById("flash_whoa").play();
+    var idx = 0;
+    function postNextTag() {
+      if (idx >= tags.length) {
+        $("#taginput").val("");
+        table.ajax.reload();
+        return;
+      }
+      var tag = tags[idx++];
+      $.ajax({
+        type: "POST",
+        url: "runsui/addtags",
+        data: {"version": SCRIPT_VERSION, "runs": runs, "tag": tag, "user": "web user"},
+        success: (data) => {
+          if (typeof data.err != 'undefined') alert(data.err);
+          postNextTag();
+        },
+        error: function(jqXHR, textStatus, errorThrown) {
+          alert("Error, status = " + textStatus + ", " +
+            "error thrown: " + errorThrown
+          );
+          postNextTag();
+        }
+      });
+    }
+    postNextTag();
   });
 
   $('#add_tag_detail_button').click( function () {
@@ -288,17 +318,24 @@ function ShowDetail(run){
   $.getJSON("runsui/get_run_doc?run="+run, function(data){
 
     // Set base data
-    $("#detail_Number").html(data['number']);
-    $("#detail_Detectors").html(data['detectors'].toString());
-    $("#detail_Start").html(moment(data['start']).utc().format('YYYY-MM-DD HH:mm'));
-    $("#detail_End").html(data.end == null ? "Not set" : moment(data['end']).utc().format('YYYY-MM-DD HH:mm'));
-    $("#detail_User").html(data['user']);
-    $("#detail_Mode").html(data['mode']);
-    $("#detail_Source").html(data['source']);
-    $("#detail_bootstrax").html(data['bootstrax']['state']);
+    data = data || {};
+    const detectors = Array.isArray(data.detectors)
+      ? data.detectors
+      : (typeof data.detectors === 'string' ? [data.detectors] : []);
+    const startText = data.start ? moment(data.start).utc().format('YYYY-MM-DD HH:mm') : "Not set";
+    const endText = data.end ? moment(data.end).utc().format('YYYY-MM-DD HH:mm') : "Not set";
+    $("#detail_Number").html(typeof data.number !== "undefined" ? data.number : "");
+    $("#detail_Detectors").html(detectors.join(', '));
+    $("#detail_Start").html(startText);
+    $("#detail_End").html(endText);
+    $("#detail_User").html(typeof data.user !== "undefined" ? data.user : "");
+    $("#detail_Mode").html(typeof data.mode !== "undefined" ? data.mode : "");
+    $("#detail_Source").html(typeof data.source !== "undefined" ? data.source : "");
+    $("#detail_bootstrax").html(data.bootstrax && data.bootstrax.state ? data.bootstrax.state : "");
 
     // Tags, if any
-    $("#detail_Tags").html(typeof data.tags == 'undefined' ? "" : data['tags'].reduce((total, tag) => {
+    const tags = Array.isArray(data.tags) ? data.tags : [];
+    $("#detail_Tags").html(tags.reduce((total, tag) => {
       var row = `<tr><td>${tag.name}</td>`;
       row += `<td>${tag.user}</td>`;
       row += `<td>${tag.date.substring(0, 16).replace('T', ' ')}</td>`;
@@ -306,7 +343,8 @@ function ShowDetail(run){
       return total + row;
     }, ""));
 
-    $("#detail_Comments").html(typeof data.comments == 'undefined' ? "" : data['comments'].reduce((total, comment) => {
+    const comments = Array.isArray(data.comments) ? data.comments : [];
+    $("#detail_Comments").html(comments.reduce((total, comment) => {
       var row = `<tr><td>${comment.user}</td>`;
       row += `<td>${comment.comment}</td>`;
       row += `<td>${moment(comment.date).format("YYYY-MM-DD HH:mm")}</td></tr>`;
@@ -314,16 +352,16 @@ function ShowDetail(run){
     }, ""));
 
     // Locations
-    $("#location_div").html(data['data'].reduce((total, entry) => {
+    const locations = Array.isArray(data.data) ? data.data : [];
+    $("#location_div").html(locations.reduce((total, entry) => {
       var row = `<table style='width:100%;border-bottom:1px solid #eee'>`;
       row += `<tr><td>Type</td><td>${entry.type}</td></tr>`;
       row += `<tr><td>Host</td><td>${entry.host}</td></tr>`;
       row += `<tr><td>Location</td><td>${entry.location}</td></tr></table>`;
       return total + row;
     }, ""));
-    $("#detail_JSON").JSONView(data, {"collapsed": true});
+    $("#detail_JSON").JSONView(data || {}, {"collapsed": true});
     $("#runsModal").modal();
   });
 
 }
-
