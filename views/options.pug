@@ -20,7 +20,11 @@ block content
     br
     button.btn.btn-default(onclick="SubmitMode()") Add/Update
     span &nbsp;
-    button.btn.btn-danger(disabled onclick="RemoveMode('run_mode_select')") Delete (careful!)
+    - var can_delete = typeof user != 'undefined' && typeof user.groups != 'undefined' && user.groups.includes('daq')
+    if can_delete
+      button.btn.btn-danger(onclick="RemoveMode('run_mode_select')") Delete (careful!)
+    else
+      button.btn.btn-danger(disabled onclick="RemoveMode('run_mode_select')") Delete (careful!)
 
   script.
 
