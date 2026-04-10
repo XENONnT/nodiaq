@@ -1,5 +1,7 @@
 // routes/api.js
 var express = require("express");
+var fs = require("fs");
+var path = require("path");
 var url = require("url");
 var bcrypt = require('bcrypt');
 var ObjectId = require('mongodb').ObjectID;
@@ -198,12 +200,191 @@ function GetSystemMonitorStatus(collection, host) {
   var options = {sort: {'_id': -1}, limit: 1};
   return collection.find(query, options);
 }
+
+function GetLatestDoc(collection) {
+  var options = {sort: {'_id': -1}, limit: 1};
+  return collection.find({}, options);
+}
+
+function LiveDataDocToCephCompat(doc) {
+  if (!doc) return doc;
+  var ret = Object.assign({}, doc);
+  ret.host = 'ceph';
+  ret.ceph_size = doc.total_space;
+  ret.ceph_free = doc.free_space;
+  ret.ceph_available = doc.available_space;
+  return ret;
+}
+
+function CSVEscape(value) {
+  if (typeof value == 'undefined' || value === null) {
+    return '';
+  }
+  var out = value.toString();
+  if (out.search(/[",\n]/) != -1) {
+    return '"' + out.replace(/"/g, '""') + '"';
+  }
+  return out;
+}
+
+function ParseXYZList(values) {
+  var x = '';
+  var y = '';
+  var z = '';
+  if (Array.isArray(values)) {
+    if (typeof values[0] != 'undefined') x = values[0];
+    if (typeof values[1] != 'undefined') y = values[1];
+    if (typeof values[2] != 'undefined') z = values[2];
+  }
+  return {x: x, y: y, z: z};
+}
+
+function ParseCoords(coords) {
+  if (Array.isArray(coords)) {
+    return ParseXYZList(coords);
+  }
+  if (typeof coords == 'object' && coords !== null && Array.isArray(coords.pmt)) {
+    return ParseXYZList(coords.pmt);
+  }
+  return {x: '', y: '', z: ''};
+}
+
+// Output headers are defined by downstream consumers, not by Mongo field names.
+const SAMPLE_CSV_HEADERS = [
+  'pmt_index',
+  'detector',
+  'signal_channel',
+  'position_x',
+  'position_y',
+  'position_z',
+  'array',
+  'sector'
+];
+
+const PMT_SECTOR_MAP_PATH = path.join(__dirname, '..', 'pmt_sector_map.csv');
+var pmt_sector_lookup = null;
+var pmt_sector_lookup_mtime = null;
+
+function GetSectorKey(detector, pmt_index) {
+  return `${detector}:${pmt_index}`;
+}
+
+// Keep the extracted sector map as a small cached lookup, reloading if the file changes.
+function GetSectorLookup() {
+  try {
+    var stat = fs.statSync(PMT_SECTOR_MAP_PATH);
+    if (pmt_sector_lookup !== null &&
+        pmt_sector_lookup_mtime !== null &&
+        stat.mtimeMs === pmt_sector_lookup_mtime) {
+      return pmt_sector_lookup;
+    }
+    var lookup = {};
+    var lines = fs.readFileSync(PMT_SECTOR_MAP_PATH, 'utf8').split(/\r?\n/);
+    lines.forEach((line, idx) => {
+      if (line === '') {
+        return;
+      }
+      if (idx === 0) {
+        return;
+      }
+      var fields = line.split(',');
+      if (fields.length < 3) {
+        return;
+      }
+      var detector = fields[0];
+      var pmt_index = fields[1];
+      var sector = fields[2];
+      if (detector === '' || pmt_index === '') {
+        return;
+      }
+      lookup[GetSectorKey(detector, pmt_index)] = sector;
+    });
+    pmt_sector_lookup = lookup;
+    pmt_sector_lookup_mtime = stat.mtimeMs;
+    return lookup;
+  } catch (err) {
+    return {};
+  }
+}
+
+function BuildMappingRow(cable_doc, sector_lookup) {
+  var coords = ParseCoords(cable_doc.coords);
+  var pmt = typeof cable_doc.pmt == 'undefined' ? '' : cable_doc.pmt;
+  var detector = typeof cable_doc.detector == 'undefined' ? '' : cable_doc.detector;
+  var sector = '';
+  if (detector !== '' && pmt !== '') {
+    sector = sector_lookup[GetSectorKey(detector, pmt)] || '';
+  }
+  return {
+    pmt_index: pmt,
+    detector: detector,
+    signal_channel: pmt,
+    position_x: coords.x,
+    position_y: coords.y,
+    position_z: coords.z,
+    array: typeof cable_doc.array == 'undefined' ? '' : cable_doc.array,
+    sector: sector,
+  };
+}
+
+function RowsToCSV(headers, rows) {
+  var lines = [];
+  lines.push(headers.join(','));
+  rows.forEach(row => {
+    lines.push(headers.map(k => CSVEscape(row[k])).join(','));
+  });
+  return lines.join('\n') + '\n';
+}
+
+router.get("/sample.csv", checkKey, function(req, res) {
+  var cable_collection = req.db.get("cable_map");
+  cable_collection.find({}).then(cable_docs => {
+    var sector_lookup = GetSectorLookup();
+    var rows = cable_docs.map(doc => BuildMappingRow(doc, sector_lookup));
+    rows.sort((a, b) => {
+      if (a.detector != b.detector) {
+        return a.detector.localeCompare(b.detector);
+      }
+      var ach = parseInt(a.pmt_index, 10);
+      var bch = parseInt(b.pmt_index, 10);
+      if (Number.isNaN(ach) && Number.isNaN(bch)) return 0;
+      if (Number.isNaN(ach)) return 1;
+      if (Number.isNaN(bch)) return -1;
+      return ach - bch;
+    });
+    var csv = RowsToCSV(SAMPLE_CSV_HEADERS, rows);
+    res.set('Content-Type', 'text/csv; charset=utf-8');
+    res.set('Content-Disposition', 'inline; filename="sample.csv"');
+    return res.send(csv);
+  }).catch(err => {
+    return res.json({message: err.message});
+  });
+});
+
 router.get("/gethoststatus/:host", checkKey, function(req, res) {
   var host = req.params.host
   var collection = req.db.get("system_monitor");
+  var liveDataCollection = req.db.get("live_data_monitor");
   GetSystemMonitorStatus(collection,host).then( docs => {
-    if (docs.length == 0)
+    if (docs.length != 0)
+      return res.json(docs[0]);
+    if (host !== 'ceph')
       return res.json({message: "No status update found for this host"});
+    return GetLatestDoc(liveDataCollection).then(liveDocs => {
+      if (liveDocs.length == 0)
+        return res.json({message: "No status update found for this host"});
+      return res.json(LiveDataDocToCephCompat(liveDocs[0]));
+    });
+  }).catch( err => {
+    return res.json({message: err.message});
+  });
+});
+
+router.get("/getlivedatastatus", checkKey, function(req, res) {
+  var collection = req.db.get("live_data_monitor");
+  GetLatestDoc(collection).then( docs => {
+    if (docs.length == 0)
+      return res.json({message: "No live data status update found"});
     return res.json(docs[0]);
   }).catch( err => {
     return res.json({message: err.message});

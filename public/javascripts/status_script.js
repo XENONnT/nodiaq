@@ -5,11 +5,27 @@ document.last_time_charts = {};
 document.reader_data = {};
 
 var readers = [];
+var reader_labels = {};
 var controllers = [];
 var eventbuilders = [];
 
+function GetReaderLabel(host) {
+  if (typeof reader_labels[host] != 'undefined' && reader_labels[host] !== "")
+    return reader_labels[host];
+  return host;
+}
+
+function GetReaderSeriesName(host, variable) {
+  var suffix = variable == "buff" ? " buffer" : " rate";
+  return GetReaderLabel(host) + suffix;
+}
+
 function SetHosts(hosts) {
   $.getJSON("status/template_info", data => {
+    reader_labels = data.readers.reduce((labels, proc) => {
+      labels[proc[1]] = proc[0] || proc[1];
+      return labels;
+    }, {});
     readers = data.readers.map(proc => proc[1]);
     controllers = data.controllers.map(proc => proc[1]);
     eventbuilders = data.eventbuilders;
@@ -73,23 +89,25 @@ function DrawInitialRatePlot(){
 
   // Convert data dict to highcharts format
   var series = [];
-  var yaxis_label = "";
-  for(var key in document.reader_data){
+  var variable = $("#menu_variable_s").val();
+  var yaxis_label = variable == "buff" ? "MB" : "MB/s";
+  readers.forEach(reader => {
+    if (typeof document.reader_data[reader] == 'undefined')
+      return;
     var rates = {};
-    if($("#menu_variable_s").val() == "rate") {
+    if(variable == "rate") {
       rates = {"type": "line", 
-        "name": key+" rate", 
-        "data": document.reader_data[key]['rate']};
-      yaxis_label = "MB/s";
-    } else if($("#menu_variable_s").val() == "buff") {
+        "id": reader,
+        "name": GetReaderSeriesName(reader, variable), 
+        "data": document.reader_data[reader]['rate']};
+    } else if(variable == "buff") {
       rates = {"type": "area", 
-        "name": key+" buffer", 
-        "data": document.reader_data[key]['buff']};
-      yaxis_label = "MB";
+        "id": reader,
+        "name": GetReaderSeriesName(reader, variable), 
+        "data": document.reader_data[reader]['buff']};
     }
     series.push(rates);
-
-  }
+  });
 
   var chart_opts = {
     chart: {
@@ -130,7 +148,6 @@ function UpdateStatusPage(){
     UpdateCommandPanel();
     UpdateCrateControllers();
     UpdateFromReaders();
-    UpdateCeph();
     UpdateBootstrax();
     UpdateDispatcher();
 }
@@ -175,61 +192,6 @@ function UpdateBootstrax() {
   });
 }
 
-function UpdateCeph(){
-  $.getJSON("hosts/get_host_status?host=ceph", (data) => {
-    $("#ceph_filltext").html( ((data['ceph_size']-data['ceph_free'])/1e12).toFixed(2) + "/" +
-      + (data['ceph_size']/1e12).toFixed(2) + "TB");
-    $('#ceph_status').html(data['health']);
-    $("#ceph_status").css("color", data['health'] == 'HEALTH_OK' ? "green" : "red");
-
-    var osds = data['osds'];
-    osds = osds.sort((a, b) => parseFloat(a.id) - parseFloat(b.id));
-    if($('#osd_div').html() == ""){
-      $("#osd_div").html(osds.reduce((tot_html, osd, i) => {
-        var html = "<div class='col-xs-12 col-sm-6' style='height:30px'>"; 
-        html += "<strong style='float:left'>OSD " +
-          osd['id'] + "&nbsp; </strong>";
-        html += "<span style='font-size:10px'>Rd: ";
-        html += "<span id='osd_"+i+"_rd'></span> (";
-        html += "<span id='osd_"+i+"_rd_bytes'></span>)";
-        html += "&nbsp;Wrt: <span id='osd_"+i+"_wr'></span> (";
-        html += "<span id='osd_"+i+"_wr_bytes'></span>/s)</span>";
-
-        html += '<div class="progress" style="height:5px;" id="osd_' + i + '_progress">';
-        html += '<div id="osd_' + i + '_capacity" class="progress-bar" role="progressbar" style="width:0%"></div></div></div>';
-        return tot_html + html;
-      }, ""));
-    }
-    UpdateOSDs(data);
-  });
-}
-
-function ToHumanBytes(number){
-  if(number > 1e12)
-    return (number/1e12).toFixed(2) + " TB";
-  if(number > 1e9)
-    return (number/1e9).toFixed(2) + " GB";
-  if(number > 1e6)
-    return (number/1e6).toFixed(2) + " MB";
-  if(number > 1e3)
-    return (number/1e3).toFixed(2) + " kB";
-  return number + " B";
-}
-
-function UpdateOSDs(data){
-  for(var i in data['osds']){
-    var j = data['osds'][i]['id'];
-    $("#osd_" + j + "_rd").text(data['osds'][i]['rd ops']);
-    $("#osd_" + j + "_rd_bytes").text(ToHumanBytes(data['osds'][i]['rd data']));
-    $("#osd_" + j + "_wr").text(data['osds'][i]['wr ops']);
-    $("#osd_" + j + "_wr_bytes").text(ToHumanBytes(data['osds'][i]['wr data']));
-    $("#osd_" + j + "_capacity").width(parseInt(100*data['osds'][i]['used'] /
-      (data['osds'][i]['used'] +
-        data['osds'][i]['avail']))+"%");
-    $("#osd_" + j + "_progress").prop('title', ToHumanBytes(data['osds'][i]['used']) + " used of " + ToHumanBytes(data['osds'][i]['used'] + data['osds'][i]['avail']));
-  }
-}
-
 function UpdateFromReaders(){
   readers.forEach( reader => {
     $.getJSON("status/get_process_status?process="+reader, function(data){
@@ -248,19 +210,16 @@ function UpdateFromReaders(){
         document.last_time_charts[rd] = data['ts'];
 
         // Chart auto update
-        var update_name = "";
         var val = null;
         try{
           if($("#menu_variable_s").val() == "rate"){
-            update_name = data['host'] + " rate";
             val = data['rate'];
           }
           else if($("#menu_variable_s").val() == "buff"){
-            update_name = data['host'] + " buff";
             val = data['buffer_length'];
           }
           // Trick to only update drawing once per seven readers (careful it doesn't bite you)
-          UpdateMultiChart(data['ts'], val, update_name, data['host'] == readers[0]);
+          UpdateMultiChart(data['ts'], val, data['host'], data['host'] == readers[0]);
         }catch(error){
         }
       }
@@ -371,10 +330,9 @@ function UpdateMultiChart(ts, val, host, update){
   var tss = (new Date(ts)).getTime();
   if(typeof(document.RatePlot)=='undefined')
     return;
-  for(var i in document.RatePlot.series){
-    if(document.RatePlot.series[i].name == host)
-      document.RatePlot.series[i].addPoint([tss, val], true, update);
-  }
+  var series = document.RatePlot.get(host);
+  if(typeof series != 'undefined')
+    series.addPoint([tss, val], true, update);
 }
 
 function UpdateChart(host, ts, rate, buff){
@@ -384,4 +342,3 @@ function UpdateChart(host, ts, rate, buff){
     document.charts[host].series[1].addPoint([tss, buff], true, true);
   }
 }
-

@@ -21,16 +21,16 @@ block content
         select.cselect#menu_history_s(style="width:100px")
           option(value=172800) 48h
           option(value=129600) 36h
-          option(value=86400 selected) 24h
+          option(value=86400) 24h
           option(value=43200) 12h
           option(value=21600) 6h
-          option(value=3600) 1h
+          option(value=3600 selected) 1h
 
         strong(style='font-size:12px') &nbsp;&nbsp; Resolution: &nbsp;
         select.cselect#menu_resolution_s(style="width:100px")
-          option(value=10) 10s
+          option(value=10 selected) 10s
           option(value=30) 30s
-          option(value=60 selected) 1m
+          option(value=60) 1m
           option(value=300) 5m
           option(value=600) 10m
 
@@ -81,17 +81,7 @@ block content
             span(id=`${eb}_checkin`)
             span &nbsp; seconds ago
 
-    div.col-sm-12.col-md-12.col-lg-6(style="padding:0px;padding-top:5px;padding-bottom:5px;border:0px solid #ccc;")
-      div.det_card_noheight
-        a(href="https://ceph.io")
-          img(src="images/ceph_logo.png" style="height:35px")
-        span(style='font-size:12px')
-          span(style='align:left') &nbsp;&nbsp;
-          strong(style='align:left')#ceph_status
-          span(style='align:left') &nbsp; Occupancy: &nbsp;
-          span(style='aligh:left')#ceph_filltext
-        div.row#osd_div
-    div.col-sm-12.col-md-12.col-lg-6(style="padding:5px;border:0px solid #ccc;")
+    div.col-sm-12.col-md-12.col-lg-12(style="padding:5px;border:0px solid #ccc;")
       div(style="width:100%;border-bottom:1px solid #ccc;background-color:#151675;color:white;padding-left:5px;")
         h5 Recent Dispatcher Commands
       div.panel-group#command_panel(style="font-size:14px")
