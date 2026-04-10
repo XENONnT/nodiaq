@@ -20,6 +20,12 @@ function GetReaderSeriesName(host, variable) {
   return GetReaderLabel(host) + suffix;
 }
 
+function GetReaderLegendName(host) {
+  var variable = $("#menu_variable_s").val();
+  var suffix = variable == "buff" ? " buffer" : " rate";
+  return GetReaderLabel(host) + suffix;
+}
+
 function SetHosts(hosts) {
   $.getJSON("status/template_info", data => {
     reader_labels = data.readers.reduce((labels, proc) => {
@@ -137,6 +143,10 @@ function DrawInitialRatePlot(){
     },
     legend: {
       enabled: true,
+      labelFormatter: function() {
+        var host = (this.userOptions && this.userOptions.id) ? this.userOptions.id : this.name;
+        return GetReaderLegendName(host);
+      },
     },
     series: series,
   };

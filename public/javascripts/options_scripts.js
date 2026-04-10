@@ -38,10 +38,17 @@ function SubmitMode(){
 
 function RemoveMode(select_div){
   $.get("options/remove_run_mode?name="+$("#"+select_div).val(), function(data){
-    if (typeof data.res != 'undefined')
+    if (typeof data.err != 'undefined') {
+      alert("Delete failed: " + data.err);
+      return;
+    }
+    if (typeof data.res != 'undefined') {
       alert(data.res);
-    else
-      location.reload();
+      return;
+    }
+    if (typeof data.archived != 'undefined') {
+      alert("Archived to: " + data.archived);
+    }
+    location.reload();
   });
 }
-

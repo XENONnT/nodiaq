@@ -136,8 +136,12 @@ router.get('/login', function(req, res){
 });
 
 router.get('/logout', function(req, res){
-    req.logout();
-    res.redirect('/');
+    req.logout(function(err) {
+        if (err) {
+            console.log(err.message || err);
+        }
+        res.redirect('/');
+    });
 });
 
 

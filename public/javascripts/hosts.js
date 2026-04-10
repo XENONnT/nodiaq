@@ -1,6 +1,24 @@
 // public/javascripts/hosts.js
 var hosts = [];
 
+function FormatNumber(value, digits) {
+  if (value === null || value === undefined) {
+    return '-';
+  }
+  var num = Number(value);
+  if (Number.isNaN(num)) {
+    return '-';
+  }
+  return num.toFixed(digits);
+}
+
+function FormatArray(values, digits) {
+  if (!Array.isArray(values)) {
+    return FormatNumber(values, digits);
+  }
+  return values.map(value => FormatNumber(value, digits)).join(", ");
+}
+
 function SetHosts() {
   $.getJSON('hosts/template_info', data => {
     hosts = data.hosts;
@@ -17,17 +35,22 @@ function UpdateMonitorPage(){
       var h = data.host;
       if (typeof h == 'undefined')
         return;
-      $(`#${h}_cpu_percent`).html(data['cpu_percent'].toFixed(2) || '-');
+      $(`#${h}_cpu_percent`).html(FormatNumber(data['cpu_percent'], 2));
       ['cpu_count','cpu_count_logical'].forEach(att => {
-        $(`#${h}_${att}`).html(data[att] || '-');
+        $(`#${h}_${att}`).html(FormatNumber(data[att], 2));
       });
-      $(`#${h}_mem_total`).html((data['virtual_memory']['total']/1e9).toFixed(2) + " GB");
-      $(`#${h}_mem_used`).html((data['virtual_memory']['percent']).toFixed(1)+"%").css("color", data['virtual_memory']['percent'] > 75 ? 'red' : 'black');
-      $(`#${h}_swap`).html((data['swap_memory']['percent']).toFixed(1) + "%").css("color", data['swap_memory']['percent'] > 75 ? 'red' : 'black');
-      $(`#${h}_load`).html(data['load'].toString());
-      $(`#${h}_drift`).html(data['drift'].toFixed(1) + ' s').css("color", Math.abs(data['drift']) > 2 ? 'red' : 'black');
+      $(`#${h}_mem_total`).html(FormatNumber(data['virtual_memory']['total']/1e9, 2) + " GB");
+      $(`#${h}_mem_used`).html(FormatNumber(data['virtual_memory']['percent'], 2) + "%").css("color", data['virtual_memory']['percent'] > 75 ? 'red' : 'black');
+      $(`#${h}_swap`).html(FormatNumber(data['swap_memory']['percent'], 2) + "%").css("color", data['swap_memory']['percent'] > 75 ? 'red' : 'black');
+      $(`#${h}_load`).html(FormatArray(data['load'], 2));
+      $(`#${h}_drift`).html(FormatNumber(data['drift'], 2) + ' s').css("color", Math.abs(data['drift']) > 2 ? 'red' : 'black');
       [0,1].forEach(val => {
-        $(`#${h}_cpu${val}_temp`).html((data.temperature[`package_id_${val}`] || 'n/a') + " C");
+        var tempVal = data.temperature ? data.temperature[`package_id_${val}`] : null;
+        var tempText = FormatNumber(tempVal, 2);
+        if (tempText === '-') {
+          tempText = 'n/a';
+        }
+        $(`#${h}_cpu${val}_temp`).html(tempText + " C");
       });
       var html = "";
       html = Object.entries(data['disk']).reduce((total, disk) => {
@@ -35,10 +58,10 @@ function UpdateMonitorPage(){
         total += disk[0] + "</strong></div>";
         total += `<div class='col-4' style='font-size:12px'><strong>Total: </strong></div>`;
         total += `<div class='col-8' style='font-size:12px'>`;
-        total += (disk[1]['total']/1e9).toFixed(2) + " GB</div>";
+        total += FormatNumber(disk[1]['total']/1e9, 2) + " GB</div>";
         total += `<div class='col-4' style='font-size:12px'><strong>Used: </strong></div>`;
         total += `<div class='col-8' style='font-size:12px'>`;
-        total += (disk[1]['percent']).toFixed(1) + "%</div>";
+        total += FormatNumber(disk[1]['percent'], 2) + "%</div>";
         return total;
       }, html);
       $(`#${h}_disk_row`).html(html);

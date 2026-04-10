@@ -10,8 +10,9 @@ function DateToObjectId(date) {
 
 function GetTemplateInfo(req) {
   var template_info = req.template_info_base;
-  template_info['hosts'] = ['reader0', 'reader1', 'reader2', 'reader7', 'reader8', 'reader9',
-    'eb0', 'eb1', 'eb2', 'eb3', 'eb4', 'eb5', 'oldmaster'];
+  template_info['hosts'] = ['reader7', 'reader8', 'reader9',
+    'eb0', 'eb1', 'eb2', 'eb3', 'eb4', 'eb5',
+    'reader0', 'reader1', 'reader2', 'oldmaster'];
   return template_info;
 }
 

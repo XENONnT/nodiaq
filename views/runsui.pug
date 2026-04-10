@@ -22,11 +22,12 @@ block content
     div.row.det_card_noheight#addtagrow(style="display:none;padding-left:20px;")
       div.col-md-12.col-lg-6
         div.form-group.row
-          label(for="taginput") Add tags to selected: &nbsp;
-          select.form-control#taginput(style="width:20%;min-width:150px") Choose a tag
+          label(for="taginput") Add tags to selected (comma-separated): &nbsp;
+          input.form-control#taginput(type="text" list="tag_suggestions" placeholder="e.g. warm_spot, ramp_up" style="width:30%;min-width:220px")
+          datalist#tag_suggestions
             each tag in tags
-              option(value=`${tag}`) #{tag}
-            span &nbsp;
+              option(value=`${tag}`)
+          span &nbsp;
           button.btn.btn-default#add_tag_button Add Tags
       div.col-md-12.col-lg-6
         div.form-group.row
