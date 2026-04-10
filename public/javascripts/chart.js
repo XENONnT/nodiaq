@@ -1,7 +1,4 @@
-function UpdateChart(ts, rate){
-    if(document.ratechart != null)
-	document.ratechart.series[0].addPoint([ts, rate], true, true);
-}
+
 function DrawChart(div){
     //{fdaq00: {x:[] y:[]}}
     ///status_history

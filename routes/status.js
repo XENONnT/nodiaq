@@ -7,8 +7,8 @@ var axios = require('axios');
 
 function TemplateInfo(req) {
   var template_info = req.template_info_base;
-  template_info.readers = [["reader0", "reader0_reader_0"], ["reader1", 'reader1_reader_0'], ["reader2", 'reader2_reader_0'], ["Muon Veto", "reader5_reader_0"], ["Neutron Veto a", "reader6_reader_0"], ["Neutron Veto b", "reader6_reader_1"]];
-  template_info.controllers = [["TPC controller", "reader0_controller_0"], ["MV controller", "reader5_controller_0"], ["NV controller", "reader6_controller_0"]];
+  template_info.readers = [['reader7', 'reader7_reader_0'], ['reader8', 'reader8_reader_0'], ["Muon Veto", 'reader9_reader_0'], ["Neutron Veto a", 'reader9_reader_1'], ["Neutron Veto b", "reader9_reader_2"]];
+  template_info.controllers = [["TPC controller", "reader7_controller_0"], ["MV controller", "reader9_controller_0"], ["NV controller", "reader9_controller_1"]];
   template_info.eventbuilders = ['eb0', 'eb1', 'eb2', 'eb3', 'eb4', 'eb5'];
   return template_info;
 }

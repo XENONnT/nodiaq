@@ -67,7 +67,6 @@ function LoadDetail(obj){
         var str = this.id.split("_")[1];
         MaybeUpdateItemField(data['_id'], str)});
     }
-    $('#detail_modal').modal();
   });
   var html = "";
   for(var j in data['actions']){
@@ -81,6 +80,8 @@ function LoadDetail(obj){
   }
   $("#collapseHistory").html(html);
   console.log(data);
+  $("#detail_modal").modal();
+
 }
 
 // These two functions allow updating fields in item description. The first click
