@@ -8,6 +8,32 @@ function dateToYMD(date) {
   return '' + (d <= 9 ? '0' + d : d) + '. ' + m + '. ' + y;
 }
 
+function EnsureModalShim() {
+  if (typeof $.fn.modal === 'function')
+    return;
+  if (typeof $.fn.dialog === 'function') {
+    $.fn.modal = function() {
+      return this.each(function() {
+        var $el = $(this);
+        $el.removeClass('fade').css('opacity', '1');
+        var title = $el.data('modalTitle') || $el.find('h4').first().text() || 'Details';
+        if ($el.data('ui-dialog')) {
+          $el.dialog('open');
+          return;
+        }
+        $el.dialog({
+          modal: true,
+          title: title,
+          width: 'auto',
+          maxWidth: 900
+        });
+      });
+    };
+    return;
+  }
+  $.fn.modal = function() { return this; };
+}
+
 function InitializeTable(DOM){
 
   // Get the window height minus padding (80px)
@@ -37,6 +63,7 @@ function InitializeTable(DOM){
 }
 
 function LoadDetail(obj){
+  EnsureModalShim();
 
   var tr = $(obj).closest('tr');
   var row = table.row(tr);
@@ -83,6 +110,10 @@ function LoadDetail(obj){
   $("#detail_modal").modal();
 
 }
+
+$(function() {
+  EnsureModalShim();
+});
 
 // These two functions allow updating fields in item description. The first click
 // turns the field into a text entry field and adds a button, the second click makes
@@ -163,4 +194,3 @@ function SubmitNewForm(){
       alert("Failed to add item, error: "+data.result);	
   });
 }
-

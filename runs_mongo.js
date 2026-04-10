@@ -2,6 +2,9 @@ var mongoose = require('mongoose');
 var DataTable = require('mongoose-datatable').default;
 var runsModel;
 var dbURI = process.env.RUNS_URI;
+if (!/^mongodb(\+srv)?:\/\//.test(dbURI)) {
+  dbURI = 'mongodb://' + dbURI;
+}
 var runsdb = mongoose.connection;
 var runs;
 var runsTableSchema;
