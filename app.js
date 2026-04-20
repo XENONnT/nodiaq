@@ -5,6 +5,7 @@ var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 var bodyParser = require("body-parser");
 var gp="";
+var asset_version = "20260420";
 
 // General MongoDB Access via monk
 var monk = require('monk');
@@ -129,6 +130,7 @@ app.use(function(req,res,next){
 
 
 app.use(function(req, res, next) {
+  res.locals.asset_version = asset_version;
   if (req.isAuthenticated()) {
     res.locals.user = req.user;
     req.is_daq = typeof req.user != 'undefined' && typeof req.user.groups != 'undefined' && req.user.groups.includes('daq');
@@ -137,6 +139,7 @@ app.use(function(req, res, next) {
       detectors: [['tpc', 'TPC'], ['muon_veto', 'Muon Veto'], ['neutron_veto', 'Neutron Veto']],
       headertitle: 'XENONnT Data Acquisition',
       shortcuts : req.is_daq ? ['index', 'control', 'status', 'options', 'hosts', 'runs', 'monitor'] : ['index', 'control', 'status', 'runs', 'monitor', 'shifts', 'users'],
+      asset_version: asset_version,
     };
   } else {
     req.template_info_base = {
@@ -144,6 +147,7 @@ app.use(function(req, res, next) {
       detectors: [['lz_tpc', 'LZ TPC'], ['lz_veto', 'LZ Veto']],
       headertitle: 'LZ Data Acquisition',
       shortcuts : ['index', 'control', 'status', 'runs', 'monitor', 'shifts', 'users'],
+      asset_version: asset_version,
     };
   }
   next();
