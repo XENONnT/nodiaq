@@ -29,7 +29,7 @@ function PopulateModeList(div){
 
 function FetchMode(select_div){
   mode = $('#'+select_div).val();
-  $.getJSON('options/options_json?name='+mode, function(data){
+  $.getJSON('options/options_json?name=' + encodeURIComponent(mode), function(data){
     document.jsoneditor.set(data);
   });
 }
@@ -57,7 +57,8 @@ function SubmitMode(){
 };
 
 function RemoveMode(select_div){
-  $.get("options/remove_run_mode?name="+$("#"+select_div).val(), function(data){
+  const name = $("#" + select_div).val();
+  $.get("options/remove_run_mode?name=" + encodeURIComponent(name), function(data){
     if (typeof data.err != 'undefined') {
       alert("Delete failed: " + data.err);
       return;
