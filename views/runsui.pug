@@ -6,11 +6,11 @@ block extrahead
   link(rel="stylesheet", href="stylesheets/runs_style.css")
 
   script(type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery-jsonview/1.2.3/jquery.jsonview.min.js")
-  script(src="javascripts/jquery.dataTables.min.js", type="text/javascript")
-  script(src="javascripts/datatables_datetime.js", type="text/javascript")
-  script(src="javascripts/datatables.pageResize.min.js", type="text/javascript")
-  script(src="javascripts/moment.min.js", type="text/javascript")
-  script(src="javascripts/runs_table.js", type="text/javascript")
+  script(src='javascripts/jquery.dataTables.min.js?v=' + asset_version, type="text/javascript")
+  script(src='javascripts/datatables_datetime.js?v=' + asset_version, type="text/javascript")
+  script(src='javascripts/datatables.pageResize.min.js?v=' + asset_version, type="text/javascript")
+  script(src='javascripts/moment.min.js?v=' + asset_version, type="text/javascript")
+  script(src='javascripts/runs_table.js?v=' + asset_version, type="text/javascript")
   link(rel="stylesheet", href="stylesheets/runs_style.css")
   link(rel="stylesheet" href="https://rawgithub.com/yesmeck/jquery-jsonview/master/dist/jquery.jsonview.css")
   script(type="text/javascript" src="https://rawgithub.com/yesmeck/jquery-jsonview/master/dist/jquery.jsonview.js")
@@ -19,29 +19,24 @@ block content
   div.main-container(style="height:100%")
     audio#flash_whoa(src="images/flash_whoa.mp3")
     - var tags = ['prioritize', 'messy', 'flash', 'warm_spot', 'hot_spot', 'ramp_up', 'ramp_down'];
-    div.row.det_card_noheight#addtagrow(style="display:none;padding-left:20px;")
-      div.col-md-12.col-lg-6
-        div.form-group.row
-          label(for="taginput") Add tags to selected (comma-separated): &nbsp;
-          input.form-control#taginput(type="text" list="tag_suggestions" placeholder="e.g. warm_spot, ramp_up" style="width:30%;min-width:220px")
-          datalist#tag_suggestions
-            each tag in tags
-              option(value=`${tag}`)
-          span &nbsp;
-          button.btn.btn-default#add_tag_button Add Tags
-      div.col-md-12.col-lg-6
-        div.form-group.row
-          label(for="commentinput") Add comment to selected: &nbsp;
-          input#commentinput(type="text")
-          span &nbsp;
-          button.btn.btn-default#add_comment_button Add Comments
     div.row.det_card_noheight
-      div.col-8
+      div.col-md-12.col-lg-6
         div.form-group(style="width:100%")
           label(style="margin-top:-25px") MongoDB Query: &nbsp;
           textarea#mongoquery(rows="1" cols="10" type="text" placeholder="{}")
           span &nbsp;
           button.btn.btn-default(onclick="CheckMongoQuery()" style="margin-top:-25px") Apply
+      div.col-md-12.col-lg-6
+        div.form-group(style="width:100%")
+          label(style="margin-top:-25px" for="taginput") Tags: &nbsp;
+          input#taginput(type="text" list="tag_suggestions" placeholder="e.g. warm_spot, ramp_up" disabled)
+          datalist#tag_suggestions
+            each tag in tags
+              option(value=`${tag}`)
+          span &nbsp;
+          button.btn.btn-default#add_tag_button(disabled style="margin-top:-25px") Add Tags
+          span &nbsp;
+          span#selected_runs_count.text-muted 0 selected
     br
     span Note: the Start and End times are given in 
     strong UTC

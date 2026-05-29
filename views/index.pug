@@ -1,8 +1,8 @@
 extends layout
 
 block extrahead
-  script(src="/javascripts/mustache.min.js", type="text/javascript")
-  script(src="javascripts/overview.js", type="text/javascript")
+  script(src='/javascripts/mustache.min.js?v=' + asset_version, type="text/javascript")
+  script(src='javascripts/overview.js?v=' + asset_version, type="text/javascript")
   link(rel="stylesheet" href="/stylesheets/overview.css")
 
 block content

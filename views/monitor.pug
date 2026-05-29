@@ -4,10 +4,10 @@ block extrahead
   link(rel="stylesheet" href="/stylesheets/overview.css")
   link(rel="stylesheet" href="/stylesheets/monitor.css")
 
-  script(src="javascripts/bootstrap-toggle.min.js", type="text/javascript")
+  script(src='javascripts/bootstrap-toggle.min.js?v=' + asset_version, type="text/javascript")
   link(rel="stylesheet", href="stylesheets/bootstrap-toggle.css")
 
-  script(src="javascripts/monitor_scripts.js", type='text/javascript')
+  script(src='javascripts/monitor_scripts.js?v=' + asset_version, type='text/javascript')
 
 block content
   div.main-container(style='background-color:#eeeeee;margin:-5px;padding:15px;height:100vh')
@@ -149,4 +149,3 @@ block content
     $(document).ready(function(){
         initialize_pmts();
     });
-

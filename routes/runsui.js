@@ -82,13 +82,15 @@ router.post('/addcomment', ensureAuthenticated, function(req, res){
   if (typeof user == 'undefined' || user == 'not set') {
     return res.json({err: "Invalid user credentials"});
   }
-  // Convert runs to int
+  // Convert run(s) to int
+  if (!Array.isArray(runs)) runs = [runs];
   var runsint = runs.map(r => parseInt(r, 10)).filter(Number.isFinite);
-  // Update many
-  var query = {number: {$in: runsint}};
+  if (runsint.length !== 1)
+    return res.status(400).json({err: "Please specify exactly one run for comments"});
+  // Update one
+  var query = {number: runsint[0]};
   var update = {$push: {comments: {date: new Date(), user: user, comment: comment}}};
-  var opts = {multi: true};
-  req.runs_coll.update(query, update, opts)
+  req.runs_coll.update(query, update)
   .then( () => res.status(200).json({}))
   .catch(err => {console.log(err.message); return res.status(200).json({err: err.message});});
 });

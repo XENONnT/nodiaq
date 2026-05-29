@@ -157,44 +157,24 @@ function InitializeRunsTable(divname){
     table.ajax.reload();
   });
 
-  table.on('draw', function() {
-    UpdateAddTagRowVisibility();
-  });
-
-  function UpdateAddTagRowVisibility() {
-    if (table.rows('.selected').data().toArray().length > 0) $("#addtagrow").slideDown();
-    else $("#addtagrow").slideUp();
+  function UpdateMultiTagControlsState() {
+    const selectedRows = table.rows('.selected').data().toArray();
+    const hasSelection = selectedRows.length > 0;
+    $("#taginput").prop("disabled", !hasSelection);
+    $("#add_tag_button").prop("disabled", !hasSelection);
+    $("#selected_runs_count").text(`${selectedRows.length} selected`);
   }
+
+  table.on('draw', function() {
+    UpdateMultiTagControlsState();
+  });
 
   $(divname + ' tbody').on( 'click', 'td', function () {
     if(!$(this).hasClass("not-selectable")){
       $(this).parent().toggleClass('selected');
-      UpdateAddTagRowVisibility();
+      UpdateMultiTagControlsState();
     }
   } );
-
-
-  $('#add_comment_button').click( function () {
-    var comment = $("#commentinput").val();
-    if(typeof comment ==="undefined")
-      console.log("No comment!");
-    else{
-      var runs = table.rows('.selected').data().toArray().map(row => row.number);
-      $.ajax({
-        type: "POST",
-        url: "runsui/addcomment",
-        data: {"version": SCRIPT_VERSION, "runs": runs, "comment": comment, "user": "web user"},
-        success: (data) => {
-            if (typeof data.err != 'undefined') alert(data.err);
-             table.ajax.reload();},
-        error:   function(jqXHR, textStatus, errorThrown) {
-          alert("Error, status = " + textStatus + ", " +
-            "error thrown: " + errorThrown
-          );
-        }
-      });
-    }
-  });
 
   $('#add_tag_button').click( function () {
     var tags = NormalizeTagInput($("#taginput").val());
@@ -297,6 +277,8 @@ function InitializeRunsTable(divname){
     }
 
   });
+
+  UpdateMultiTagControlsState();
 }
 
 function RemoveTag(run, user, tag){

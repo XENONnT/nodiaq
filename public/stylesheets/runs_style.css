@@ -10,6 +10,19 @@ textarea:focus {
     width: 80%;
 }
 
+#taginput {
+    height: 2em;
+    width: 50%;
+    min-width: 220px;
+    padding: 3px;
+    transition: all 0.5s ease;
+    margin-top: 10px;
+}
+
+#taginput:focus {
+    width: 80%;
+}
+
 table.dataTable tbody tr td {
     padding: 2px 4px;
     /*border-bottom: 1px solid #111;*/
