@@ -7,6 +7,21 @@ var fs = require("fs");
 var path = require("path");
 const SCRIPT_VERSION = '20210622';
 
+function CurrentUsername(req) {
+  const user = (req || {}).user || {};
+  const ldapUid = user.lngs_ldap_uid;
+  if (typeof ldapUid === "string" && ldapUid !== "" && ldapUid !== "not set") return ldapUid;
+  const githubLogin = user.github;
+  if (typeof githubLogin === "string" && githubLogin !== "" && githubLogin !== "not set") return githubLogin;
+  const githubInfoUsername = user.github_info && user.github_info.username;
+  if (typeof githubInfoUsername === "string" && githubInfoUsername !== "")
+    return githubInfoUsername;
+  const githubInfoLogin = user.github_info && user.github_info._json && user.github_info._json.login;
+  if (typeof githubInfoLogin === "string" && githubInfoLogin !== "")
+    return githubInfoLogin;
+  return "unknown";
+}
+
 function TemplateInfo(req) {
   var template_info = req.template_info_base;
   template_info['extra_detectors'] = [['include', 'Includes'], ['backup', 'Backup']];
@@ -51,6 +66,7 @@ router.post("/set_run_mode", ensureAuthenticated, function(req, res){
   if (typeof doc._id != 'undefined')
     delete doc._id;
   doc['last_modified'] = new Date();
+  doc['user'] = CurrentUsername(req);
   if (typeof req.body.version == 'undefined' || req.body.version != SCRIPT_VERSION)
     return res.json({res: "Please hard-reload your page (shift-f5 or equivalent)"});
 
