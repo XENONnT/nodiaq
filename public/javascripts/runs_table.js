@@ -22,9 +22,8 @@ function CheckMongoQuery(){
     alert("Your mongo query is not valid JSON!");
     return;
   }
-  document.datatable_options['ajax']['data'] ={"conditions": query};
-  $(document.datatable_div).DataTable().destroy();
-  $(document.datatable_div).DataTable(document.datatable_options);
+  document.mongo_conditions = query;
+  if (document.table) document.table.ajax.reload(null, true);
 }
 
 function InitializeRunsTable(divname){
@@ -55,7 +54,10 @@ function InitializeRunsTable(divname){
         //console.log(settings.url);
       },
       data: function ( d ) {
+        const conditions =
+          typeof document.mongo_conditions === "string" ? document.mongo_conditions : "{}";
         return $.extend( {}, d, {
+          "conditions": conditions,
           "date_min": $('#datepicker_from').val(),
           "date_max": $('#datepicker_to').val(),
           "start" : d.start/d.length,
