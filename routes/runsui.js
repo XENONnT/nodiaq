@@ -95,6 +95,46 @@ router.post('/addcomment', ensureAuthenticated, function(req, res){
   .catch(err => {console.log(err.message); return res.status(200).json({err: err.message});});
 });
 
+router.post('/editcomment', ensureAuthenticated, function(req, res){
+  var run = req.body.run;
+  var commentUser = req.body.comment_user;
+  var commentDate = req.body.comment_date;
+  var comment = req.body.comment;
+
+  if (typeof req.body.version == 'undefined' || req.body.version != SCRIPT_VERSION)
+    return res.json({err: "Please hard-reload your page (shift-f5 or equivalent)"});
+
+  // Check permissions (DAQ experts)
+  if (typeof req.user.groups == "undefined" || !req.user.groups.includes("daq"))
+    return res.sendStatus(403);
+
+  const editor =
+    typeof req.user.lngs_ldap_uid !== "undefined" && req.user.lngs_ldap_uid !== "not set"
+      ? req.user.lngs_ldap_uid
+      : req.user.github;
+
+  const runint = parseInt(run, 10);
+  if (!Number.isFinite(runint))
+    return res.status(400).json({err: "Invalid run"});
+  if (typeof commentUser === "undefined" || commentUser === "")
+    return res.status(400).json({err: "Invalid comment user"});
+  const date = new Date(commentDate);
+  if (Number.isNaN(date.getTime()))
+    return res.status(400).json({err: "Invalid comment date"});
+
+  // Update one comment (match by user + exact timestamp)
+  var query = {number: runint, comments: {$elemMatch: {user: commentUser, date: date}}};
+  var update = {$set: {"comments.$.comment": comment, "comments.$.edited_by": editor, "comments.$.edited_date": new Date()}};
+  req.runs_coll.update(query, update)
+  .then(result => {
+    const modified = result && typeof result.nModified !== "undefined" ? result.nModified : undefined;
+    if (modified === 0)
+      return res.status(200).json({err: "Comment not found (or already updated)"});
+    return res.status(200).json({});
+  })
+  .catch(err => {console.log(err.message); return res.status(200).json({err: err.message});});
+});
+
 router.get('/runsfractions', ensureAuthenticated, function(req, res){
   var q = url.parse(req.url, true).query;
   var days = q.days;

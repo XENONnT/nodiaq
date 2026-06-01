@@ -298,6 +298,39 @@ function RemoveTag(run, user, tag){
   });
 }
 
+function EditComment(run, commentUser, commentDate, oldText) {
+  if (!window.canEditRunComments) return;
+  if (
+    typeof run === "undefined" ||
+    typeof commentUser === "undefined" ||
+    typeof commentDate === "undefined"
+  )
+    return;
+  const newText = prompt("Edit comment:", oldText || "");
+  if (newText === null) return; // cancelled
+  $.ajax({
+    type: "POST",
+    url: "runsui/editcomment",
+    data: {
+      version: SCRIPT_VERSION,
+      run: run,
+      comment_user: commentUser,
+      comment_date: commentDate,
+      comment: newText
+    },
+    success: function (data) {
+      if (data && typeof data.err !== "undefined") alert(data.err);
+      ShowDetail(run);
+      if (document.table) document.table.ajax.reload(null, false);
+    },
+    error: function (jqXHR, textStatus, errorThrown) {
+      const data = jqXHR && jqXHR.responseJSON ? jqXHR.responseJSON : null;
+      if (data && typeof data.err !== "undefined") alert(data.err);
+      else alert("Error, status = " + textStatus + ", " + "error thrown: " + errorThrown);
+    }
+  });
+}
+
 function ShowDetail(run){
   $.getJSON("runsui/get_run_doc?run="+run, function(data){
 
@@ -329,9 +362,21 @@ function ShowDetail(run){
 
     const comments = Array.isArray(data.comments) ? data.comments : [];
     $("#detail_Comments").html(comments.reduce((total, comment) => {
+      const text =
+        typeof comment.comment !== "undefined"
+          ? comment.comment
+          : (typeof comment.text !== "undefined" ? comment.text : "");
+      const isoDate =
+        typeof comment.date === "string"
+          ? comment.date
+          : (comment.date ? new Date(comment.date).toISOString() : "");
       var row = `<tr><td>${comment.user}</td>`;
-      row += `<td>${comment.comment}</td>`;
-      row += `<td>${moment(comment.date).format("YYYY-MM-DD HH:mm")}</td></tr>`;
+      row += `<td>${text}</td>`;
+      row += `<td>${comment.date ? moment(comment.date).format("YYYY-MM-DD HH:mm") : ""}</td>`;
+      if (window.canEditRunComments) {
+        row += `<td><button class='btn btn-sm btn-info' onclick='EditComment(${JSON.stringify(data.number)}, ${JSON.stringify(comment.user)}, ${JSON.stringify(isoDate)}, ${JSON.stringify(text)})'>Edit</button></td>`;
+      }
+      row += `</tr>`;
       return total + row;
     }, ""));
 

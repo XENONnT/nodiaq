@@ -19,6 +19,7 @@ block content
   div.main-container(style="height:100%")
     audio#flash_whoa(src="images/flash_whoa.mp3")
     - var tags = ['prioritize', 'messy', 'flash', 'warm_spot', 'hot_spot', 'ramp_up', 'ramp_down'];
+    - var can_edit_run_comments = typeof user != 'undefined' && typeof user.groups != 'undefined' && user.groups.includes('daq')
     div.row.det_card_noheight
       div.col-md-12.col-lg-6
         div.form-group(style="width:100%")
@@ -109,6 +110,8 @@ block content
                     td User
                     td Comment
                     td Date Added
+                    if can_edit_run_comments
+                      td Actions
                   tbody#detail_Comments
                 div.form-group.row(style="min-width:500px;padding-left:15px;")
                   label(for="newcomment") Add comment: &nbsp;
@@ -128,6 +131,7 @@ block content
   script.
     $(document).ready(function(){
       document.getElementById("flash_whoa").volume = 0.8;
+      window.canEditRunComments = !{JSON.stringify(can_edit_run_comments)};
       DrawActiveLink("#lruns");
       InitializeRunsTable("#runs_table");
       $(".tag-button").click(function() {$("#newtag").val(this.innerHTML)});
