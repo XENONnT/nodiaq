@@ -5,7 +5,7 @@ var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 var bodyParser = require("body-parser");
 var gp="";
-var asset_version = "20260420";
+var asset_version = "20260926";
 
 // General MongoDB Access via monk
 var monk = require('monk');

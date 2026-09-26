@@ -85,7 +85,8 @@ router.get('/get_reader_history', ensureAuthenticated, function(req,res){
   if(typeof res == 'undefined')
     resolution = 60; //1m
 
-  var t = new Date() - limit*1000;
+  var bin_width = resolution * 1000;
+  var t = Math.floor((Date.now() - limit * 1000) / bin_width) * bin_width;
   var id = objectIdWithTimestamp(t);
   // Fancy-pants aggregation to take binning into account
   var query = {"host": reader, "_id": {"$gt": id}};
