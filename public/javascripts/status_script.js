@@ -3,6 +3,8 @@ var CHECKIN_TIMEOUT=10;
 document.ceph_chart = null;
 document.last_time_charts = {};
 document.reader_data = {};
+document.rate_plot_updating = false;
+document.rate_plot_last_poll = 0;
 
 var readers = [];
 var reader_labels = {};
@@ -96,6 +98,8 @@ function DrawInitialRatePlot(){
   // Convert data dict to highcharts format
   var series = [];
   var variable = $("#menu_variable_s").val();
+  var resolution = parseInt($("#menu_resolution_s").val(), 10);
+  var history = parseInt($("#menu_history_s").val(), 10);
   var yaxis_label = variable == "buff" ? "MB" : "MB/s";
   readers.forEach(reader => {
     if (typeof document.reader_data[reader] == 'undefined')
@@ -152,7 +156,131 @@ function DrawInitialRatePlot(){
   };
   var div = 'rate_chart';
   document.RatePlot = Highcharts.chart(div, chart_opts);
+  document.rate_plot_variable = variable;
+  document.rate_plot_resolution = resolution;
+  document.rate_plot_history = history;
+  document.rate_plot_last_poll = 0;
 }
+
+
+
+
+function UpdateRatePlot(){
+  if(typeof document.RatePlot == 'undefined' || document.RatePlot == null)
+    return;
+  if(document.rate_plot_updating)
+    return;
+
+  var variable = document.rate_plot_variable;
+  var resolution = document.rate_plot_resolution;
+  var history = document.rate_plot_history;
+
+  if(typeof variable == 'undefined' ||
+     typeof resolution == 'undefined' ||
+     typeof history == 'undefined')
+    return;
+
+  if($("#menu_variable_s").val() != variable ||
+     parseInt($("#menu_resolution_s").val(), 10) != resolution ||
+     parseInt($("#menu_history_s").val(), 10) != history)
+    return;
+
+  var now = Date.now();
+  var poll_interval = Math.min(resolution * 500, 30000);
+
+  if(now - document.rate_plot_last_poll < poll_interval)
+    return;
+
+  document.rate_plot_last_poll = now;
+  document.rate_plot_updating = true;
+
+  var chart = document.RatePlot;
+  var active_readers = [];
+
+  readers.forEach(reader => {
+    if(typeof chart.get(reader) != 'undefined')
+      active_readers.push(reader);
+  });
+
+  if(active_readers.length == 0){
+    document.rate_plot_updating = false;
+    return;
+  }
+
+  var pending = active_readers.length;
+
+  active_readers.forEach(reader => {
+    var series = chart.get(reader);
+    var limit = 3 * resolution;
+
+    if(series.data.length > 0){
+      var last_x = series.data[series.data.length - 1].x;
+      limit = Math.max(
+        limit,
+        Math.ceil((now - last_x) / 1000) + resolution
+      );
+    }
+
+    limit = Math.min(limit, history);
+
+    $.getJSON(
+      "status/get_reader_history?limit="+limit+
+      "&res="+resolution+
+      "&reader="+reader
+    )
+    .done(function(data){
+      if(document.RatePlot !== chart)
+        return;
+
+      if(typeof data[reader] == 'undefined' ||
+         typeof data[reader][variable] == 'undefined')
+        return;
+
+      var points = data[reader][variable];
+
+      points.forEach(point => {
+        var existing = null;
+
+        for(var i = 0; i < series.data.length; i++){
+          if(series.data[i].x == point[0]){
+            existing = series.data[i];
+            break;
+          }
+        }
+
+        if(existing == null)
+          series.addPoint(point, false, false, false);
+        else
+          existing.update(
+            {x: point[0], y: point[1]},
+            false,
+            false
+          );
+      });
+
+      var bin_width = resolution * 1000;
+      var cutoff = Math.floor(
+        (now - history * 1000) / bin_width
+      ) * bin_width;
+
+      while(series.data.length > 0 &&
+            series.data[0].x < cutoff)
+        series.removePoint(0, false, false);
+    })
+    .always(function(){
+      pending -= 1;
+
+      if(pending == 0){
+        if(document.RatePlot === chart)
+          chart.redraw(false);
+
+        document.rate_plot_updating = false;
+      }
+    });
+  });
+}
+
+
 
 function UpdateStatusPage(){
     UpdateCommandPanel();
@@ -160,6 +288,7 @@ function UpdateStatusPage(){
     UpdateFromReaders();
     UpdateBootstrax();
     UpdateDispatcher();
+    UpdateRatePlot();
 }
 
 function UpdateDispatcher() {
@@ -202,6 +331,7 @@ function UpdateBootstrax() {
   });
 }
 
+
 function UpdateFromReaders(){
   readers.forEach( reader => {
     $.getJSON("status/get_process_status?process="+reader, function(data){
@@ -213,28 +343,8 @@ function UpdateFromReaders(){
       $("#"+rd+"_status").html(GetStatus(data['status'], data['checkin']));
       $("#"+rd+"_rate").html(data['rate'].toFixed(2));
       $("#"+rd+"_check-in").html(data['checkin']);
-      data['ts'] = parseInt(data['_id'].substr(0,8), 16)*1000;
-
-      if(document.last_time_charts[rd] == undefined ||
-        document.last_time_charts[rd] != data['ts']){
-        document.last_time_charts[rd] = data['ts'];
-
-        // Chart auto update
-        var val = null;
-        try{
-          if($("#menu_variable_s").val() == "rate"){
-            val = data['rate'];
-          }
-          else if($("#menu_variable_s").val() == "buff"){
-            val = data['buffer_length'];
-          }
-          // Trick to only update drawing once per seven readers (careful it doesn't bite you)
-          UpdateMultiChart(data['ts'], val, data['host'], data['host'] == readers[0]);
-        }catch(error){
-        }
-      }
-    }); // getJSON
-  }); // forEach
+    });
+  });
 }
 
 function UpdateCrateControllers(){
